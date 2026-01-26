@@ -377,12 +377,12 @@ class FlowField:
         :return: None
         """
         # get the coordinates of all the points where the function should be evaluated at.
-        x_values = np.linspace(self.x_min, self.x_max, self.resolution[0])
-        y_values = np.linspace(self.y_min, self.y_max, self.resolution[1])
+        x_values = np.linspace(self.x_min, self.x_max, self.size[0] * 10)
+        y_values = np.linspace(self.y_min, self.y_max, self.size[1] * 10)
 
         # compute the function at each point and sum the contribution of each canonical flow in the flow field
-        z_values = np.zeros(self.resolution).T
-        mask = np.zeros(self.resolution).T
+        z_values = np.zeros((self.size[0] * 10, self.size[1] * 10)).T
+        mask = np.zeros((self.size[0] * 10, self.size[1] * 10)).T
         for i, x in enumerate(x_values):
             for j, y in enumerate(y_values):
                 if self._is_inside_cylinder(x, y) and self._has_cylinder:
