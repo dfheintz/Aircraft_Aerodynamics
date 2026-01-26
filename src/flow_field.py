@@ -286,7 +286,7 @@ class FlowField:
 
         uniform = self._check_has_uniform_flow()
 
-        angles = np.linspace(0, np.pi, res)
+        angles = np.linspace(0, 2 * np.pi, res)
         x_values = np.zeros(len(angles))
         y_values = np.zeros(len(angles))
 
@@ -294,27 +294,19 @@ class FlowField:
             x_values[i] = self._cylinder_radius * np.cos(theta) - self._cylinder_x_0
             y_values[i] = self._cylinder_radius * np.sin(theta) - self._cylinder_y_0
 
-        top_surface = np.zeros(len(x_values))
-        bottom_surface = np.zeros(len(x_values))
+        surface = np.zeros(len(x_values))
         for i, (x, y) in enumerate(zip(x_values, y_values)):
-            u_top = v_top = u_bottom = v_bottom = 0
+            u = v = 0
             for flow in self.flows:
-                du_top, dv_top = flow.velocity(x, y)
-                u_top += du_top
-                v_top += dv_top
+                du, dv = flow.velocity(x, y)
+                u += du
+                v += dv
 
-                du_bottom, dv_bottom = flow.velocity(x, -y)
-                u_bottom += du_bottom
-                v_bottom += dv_bottom
+            velocity = np.sqrt(u**2 + v**2)
+            surface[i] = 1 - (velocity / uniform.freestream_velocity) ** 2
 
-            velocity_top = np.sqrt(u_top**2 + v_top**2)
-            top_surface[i] = 1 - (velocity_top / uniform.freestream_velocity) ** 2
-
-            velocity_bottom = np.sqrt(u_bottom**2 + v_bottom**2)
-            bottom_surface[i] = 1 - (velocity_bottom / uniform.freestream_velocity) ** 2
-
-        plt.plot(x_values, top_surface, "r")
-        plt.plot(x_values, bottom_surface, "b")
+        plt.plot(angles, surface, "r")
+        self.ax.yaxis.set_inverted(True)
         plt.show()
 
     def plot(self, title: Optional[str] = None) -> None:
