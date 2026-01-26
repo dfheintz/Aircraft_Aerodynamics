@@ -281,6 +281,12 @@ class FlowField:
         self.plot("Pressure Coefficient")
 
     def plot_pressure_coefficient_cylinder(self, res: int = 100) -> None:
+        """
+        Plot the pressure coefficient across the surface of the cylinder.
+
+        :param res: resolution of the plot.
+        :return: None
+        """
         if not self._has_cylinder:
             Exception("The flow has no cylinder added.")
 
@@ -310,6 +316,12 @@ class FlowField:
         plt.show()
 
     def plot(self, title: Optional[str] = None) -> None:
+        """
+        Plot the current graph. Used after streamlines are added.
+
+        :param title: title of the plot.
+        :return: None
+        """
         if title is None:
             title = "Flow Field"
 
@@ -334,6 +346,15 @@ class FlowField:
         dt: float = 0.1,
         max_iterations: float = 1e6,
     ) -> None:
+        """
+        Plot a vertical line of equally spaced streamlines starting at x_start.
+
+        :param num: number of streamlines to plot.
+        :param x_start: x coordinate to start streamlines at.
+        :param dt: size of the time step when computing the streamlines.
+        :param max_iterations: maximum number of iterations of calculating the streamlines.
+        :return: None
+        """
         if x_start is None:
             x_start = self.x_min
 
@@ -376,6 +397,15 @@ class FlowField:
     def _stream_line(
         self, x_start: float, y_start: float, dt: float, max_iterations: int
     ) -> tuple[list[float], list[float]]:
+        """
+        Private method that calculates the path of a streamline starting at x_start, y_start in the flow field.
+
+        :param x_start: x position the streamlines starts at.
+        :param y_start: y position the streamlines starts at.
+        :param dt: size of the time step when computing the streamlines.
+        :param max_iterations: maximum number of iterations of calculating the streamlines.
+        :return: x and y values of the streamlines.
+        """
         x_values = [x_start]
         y_values = [y_start]
 
@@ -400,6 +430,11 @@ class FlowField:
         return x_values, y_values
 
     def _check_has_uniform_flow(self) -> UniformFlow:
+        """
+        Checks if the user has added a uniform flow to the flow field.
+
+        :return: The uniform flow field object, if present.
+        """
         has_uniform = False
         uniform = 0
         for flow in self.flows:
@@ -412,10 +447,17 @@ class FlowField:
         return uniform
 
     def _is_inside_cylinder(self, x, y) -> bool:
+        """
+        Checks whether a given point is inside the cylinder.
+
+        :param x: x coordinate to evaluate.
+        :param y: y coordinate to evaluate.
+        :return: True, if inside the cylinder, False otherwise.
+        """
         x = x - self._cylinder_x_0
         y = y - self._cylinder_y_0
 
-        r = np.sqrt(x ** 2 + y ** 2)
+        r = np.sqrt(x**2 + y**2)
 
         return True if r < self._cylinder_radius else False
 
