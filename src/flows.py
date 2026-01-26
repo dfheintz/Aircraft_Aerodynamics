@@ -12,7 +12,7 @@ class BaseFlow(ABC):
      function for each of the canonical flows.
     """
 
-    def __init__(self, x_0: int, y_0: int) -> None:
+    def __init__(self, x_0: float, y_0: float) -> None:
         """
         Base initialize method. Sets the origin of the flow type.
 
@@ -23,7 +23,7 @@ class BaseFlow(ABC):
         self.y_0 = y_0
 
     @abstractmethod
-    def stream_function(self, x: int, y: int) -> float:
+    def stream_function(self, x: float, y: float) -> float:
         """
         Defines the stream function of the flow type given an x, y position.
 
@@ -34,7 +34,7 @@ class BaseFlow(ABC):
         pass
 
     @abstractmethod
-    def potential_function(self, x: int, y: int) -> float:
+    def potential_function(self, x: float, y: float) -> float:
         """
         Defines the potential function of the flow type given an x, y position.
 
@@ -45,7 +45,7 @@ class BaseFlow(ABC):
         pass
 
     @abstractmethod
-    def velocity(self, x: int, y: int) -> tuple[float, float]:
+    def velocity(self, x: float, y: float) -> tuple[float, float]:
         """
         Defines the velocity component in the x and y direction of the flow type given an x, y position.
 
@@ -55,21 +55,29 @@ class BaseFlow(ABC):
         """
         pass
 
-    def absolute_velocity(self, x: int, y: int) -> float:
+    def velocity_x(self, x: float, y: float) -> float:
         """
-        Defines the absolute velocity of the flow type given an x, y position.
+        Return only the x component of the velocity at the given x, y position.
 
-        :param x: x position to evaluate the absolute velocity at.
-        :param y: y position to evaluate the absolute velocity at.
-        :return: absolute velocity evaluated at the x, y position.
+        :param x: x position to evaluate the velocity at.
+        :param y: y position to evaluate the velocity at.
+        :return: x component of the velocity at the given x, y position.
         """
-        u, v = self.velocity(x, y)
+        return self.velocity(x, y)[0]
 
-        return np.sqrt(u**2 + v**2)
+    def velocity_y(self, x: float, y: float) -> float:
+        """
+        Return only the y component of the velocity at the given x, y position.
+
+        :param x: x position to evaluate the velocity at.
+        :param y: y position to evaluate the velocity at.
+        :return: y component of the velocity at the given x, y position.
+        """
+        return self.velocity(x, y)[1]
 
     def _transform(self,
-                   x: int,
-                   y: int) -> tuple[int, int]:
+                   x: float,
+                   y: float) -> tuple[float, float]:
         """
         Transform the given global coordinates to the flow's local coordinate system.
 
@@ -80,8 +88,8 @@ class BaseFlow(ABC):
         return x - self.x_0, y - self.y_0
 
     @staticmethod
-    def _to_polar_coordinates(x: int,
-                              y: int) -> tuple[float, float]:
+    def _to_polar_coordinates(x: float,
+                              y: float) -> tuple[float, float]:
         """
         Transform cartesian to polar coordinates.
 
@@ -97,14 +105,12 @@ class BaseFlow(ABC):
     @staticmethod
     def _to_cartesian_velocity(u_r: float,
                                u_theta: float,
-                               r: float,
                                theta: float) -> tuple[float, float]:
         """
         Transform polar velocity components to cartesian velocity components.
 
         :param u_r: polar velocity component in the radius direction.
         :param u_theta: polar velocity component in the theta direction.
-        :param r: radius of polar coordinate.
         :param theta: angle of polar coordinate.
         :return: velocity component in the x direction, velocity component in the y direction.
         """
@@ -134,8 +140,8 @@ class BaseFlow(ABC):
         return angle_rad * 180 / np.pi
 
     def _is_center(self,
-                   x: int,
-                   y: int) -> bool:
+                   x: float,
+                   y: float) -> bool:
         """
         Determines if the given coordinate is at the center of the flow.
         Most of the canonical flows are not defined at their center.
@@ -184,17 +190,17 @@ class UniformFlow(BaseFlow):
         # As a uniform flow is the same everywhere, the center is not important.
         super().__init__(0, 0)
 
-    def stream_function(self, x: int, y: int) -> float:
+    def stream_function(self, x: float, y: float) -> float:
         return self.freestream_velocity * (
             (self.y_0 + y) * np.cos(self.angle) - (self.x_0 + x) * np.sin(self.angle)
         )
 
-    def potential_function(self, x: int, y: int) -> float:
+    def potential_function(self, x: float, y: float) -> float:
         return self.freestream_velocity * (
             (self.x_0 + x) * np.cos(self.angle) + (self.y_0 + y) * np.sin(self.angle)
         )
 
-    def velocity(self, x: int, y: int) -> tuple[float, float]:
+    def velocity(self, x: float, y: float) -> tuple[float, float]:
         u = self.freestream_velocity * np.cos(self.angle)
         v = self.freestream_velocity * np.sin(self.angle)
 
@@ -207,7 +213,7 @@ class Vortex(BaseFlow):
 
     Defines the potential flow functions for a vortex flow.
     """
-    def __init__(self, x_0: int, y_0: int, strength: float) -> None:
+    def __init__(self, x_0: float, y_0: float, strength: float) -> None:
         """
         Initialize the vortex flow class.
 
@@ -219,7 +225,7 @@ class Vortex(BaseFlow):
 
         super().__init__(x_0, y_0)
 
-    def stream_function(self, x: int, y: int) -> float:
+    def stream_function(self, x: float, y: float) -> float:
         # check if the given coordinate is at the center of the vortex
         if self._is_center(x, y):
             return 0
@@ -231,7 +237,7 @@ class Vortex(BaseFlow):
 
         return -self.strength * np.log(r) / 2 / np.pi
 
-    def potential_function(self, x: int, y: int) -> float:
+    def potential_function(self, x: float, y: float) -> float:
         # check if the given coordinate is at the center of the vortex
         if self._is_center(x, y):
             return 0
@@ -243,7 +249,7 @@ class Vortex(BaseFlow):
 
         return self.strength * theta / 2 / np.pi
 
-    def velocity(self, x: int, y: int) -> tuple[float, float]:
+    def velocity(self, x: float, y: float) -> tuple[float, float]:
         # check if the given coordinate is at the center of the vortex
         if self._is_center(x, y):
             return 0, 0
@@ -256,7 +262,7 @@ class Vortex(BaseFlow):
         u_r = 0
         u_theta = self.strength / 2 / np.pi / r
 
-        return self._to_cartesian_velocity(u_r, u_theta, r, theta)
+        return self._to_cartesian_velocity(u_r, u_theta, theta)
 
 
 class SourceSink(BaseFlow):
@@ -265,7 +271,7 @@ class SourceSink(BaseFlow):
 
     Defines the potential flow functions for a source or sink flow.
     """
-    def __init__(self, x_0: int, y_0: int, strength: float) -> None:
+    def __init__(self, x_0: float, y_0: float, strength: float) -> None:
         """
         Initialize the source sink flow class.
 
@@ -277,7 +283,7 @@ class SourceSink(BaseFlow):
 
         super().__init__(x_0, y_0)
 
-    def stream_function(self, x: int, y: int) -> float:
+    def stream_function(self, x: float, y: float) -> float:
         # check if the given coordinate is at the center of the source/sink
         if self._is_center(x, y):
             return 0
@@ -289,7 +295,7 @@ class SourceSink(BaseFlow):
 
         return self.strength * theta / 2 / np.pi
 
-    def potential_function(self, x: int, y: int) -> float:
+    def potential_function(self, x: float, y: float) -> float:
         # check if the given coordinate is at the center of the source/sink
         if self._is_center(x, y):
             return 0
@@ -301,7 +307,7 @@ class SourceSink(BaseFlow):
 
         return self.strength * np.log(r) / 2 / np.pi
 
-    def velocity(self, x: int, y: int) -> tuple[float, float]:
+    def velocity(self, x: float, y: float) -> tuple[float, float]:
         # check if the given coordinate is at the center of the source/sink
         if self._is_center(x, y):
             return 0, 0
@@ -311,13 +317,10 @@ class SourceSink(BaseFlow):
 
         r, theta = self._to_polar_coordinates(x, y)
 
-        if r == 0:
-            print(x, y)
-
         u_r = self.strength / 2 / np.pi / r
         u_theta = 0
 
-        return self._to_cartesian_velocity(u_r, u_theta, r, theta)
+        return self._to_cartesian_velocity(u_r, u_theta, theta)
 
 
 class Doublet(BaseFlow):
@@ -326,7 +329,7 @@ class Doublet(BaseFlow):
 
     Defines the potential flow functions for a doublet flow.
     """
-    def __init__(self, x_0: int, y_0: int, strength: float) -> None:
+    def __init__(self, x_0: float, y_0: float, strength: float) -> None:
         """
         Initialize the doublet flow class.
 
@@ -338,7 +341,7 @@ class Doublet(BaseFlow):
 
         super().__init__(x_0, y_0)
 
-    def stream_function(self, x: int, y: int) -> float:
+    def stream_function(self, x: float, y: float) -> float:
         # check if the given coordinate is at the center of the doublet
         if self._is_center(x, y):
             return 0
@@ -350,7 +353,7 @@ class Doublet(BaseFlow):
 
         return -self.strength * np.sin(theta) / 2 / np.pi / r
 
-    def potential_function(self, x: int, y: int) -> float:
+    def potential_function(self, x: float, y: float) -> float:
         # check if the given coordinate is at the center of the doublet
         if self._is_center(x, y):
             return 0
@@ -362,7 +365,7 @@ class Doublet(BaseFlow):
 
         return self.strength * np.cos(theta) / 2 / np.pi / r
 
-    def velocity(self, x: int, y: int) -> tuple[float, float]:
+    def velocity(self, x: float, y: float) -> tuple[float, float]:
         # check if the given coordinate is at the center of the doublet
         if self._is_center(x, y):
             return 0, 0
@@ -375,7 +378,7 @@ class Doublet(BaseFlow):
         u_r = self.strength * np.cos(theta) / r ** 2
         u_theta = self.strength * np.sin(theta) / r ** 3
 
-        return self._to_cartesian_velocity(u_r, u_theta, r, theta)
+        return self._to_cartesian_velocity(u_r, u_theta, theta)
 
 
 
