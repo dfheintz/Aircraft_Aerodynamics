@@ -21,6 +21,7 @@ class FlowField:
         resolution: Optional[tuple[int, int]] = None,
         arrow_length: float = 1,
         equal_axis: bool = False,
+            plot: bool = True
     ) -> None:
         """
         Initializes the flow field.
@@ -39,6 +40,7 @@ class FlowField:
         self._cylinder_radius = -1
         self._cylinder_x_0 = 0
         self._cylinder_y_0 = 0
+        self._has_plot = plot
 
         # if no resolution is passed in the flow field make the resolution equal to the size.
         if resolution is None:
@@ -48,15 +50,14 @@ class FlowField:
 
         self.flows = []  # list to add the canonical flows to
 
-        self.fig, self.ax = plt.subplots()
+        if plot:
+            self.fig, self.ax = plt.subplots()
 
         # min and max coordinates of the flow field
         self.x_min = self.center[0] - self.size[0] / 2
         self.x_max = self.center[0] + self.size[0] / 2
         self.y_min = self.center[1] - self.size[1] / 2
         self.y_max = self.center[1] + self.size[1] / 2
-
-        plt.rcParams["text.usetex"] = True
 
     def add(self, flow: BaseFlow) -> None:
         """
@@ -135,7 +136,6 @@ class FlowField:
         y_0: float = 0,
         chord: float = 1,
         aoa_units: str = "deg",
-        xtol: float = 1e-8,
     ) -> None:
         # if the aoa is given in degrees, convert to radians
         if aoa_units == "deg":
@@ -146,9 +146,6 @@ class FlowField:
             Exception(
                 'Invalid angle units. Either "rad" for radians or "deg" for degrees.'
             )
-
-        uniform = self._check_has_uniform_flow()
-
         vortex = Vortex(x_0, y_0, -1)
 
         x = x_0 + chord * np.cos(aoa) / 2
@@ -157,16 +154,89 @@ class FlowField:
         def vortex_strength(s):
             vortex.strength = s
 
-            u = vortex.velocity_x(x, y) + uniform.velocity_x(x, y)
-            v = vortex.velocity_y(x, y) + uniform.velocity_y(x, y)
+            u = v = 0
+            for flow in self.flows:
+                du, dv = flow.velocity(x, y)
+                u += du
+                v += dv
+
+            u += vortex.velocity_x(x, y)
+            v += vortex.velocity_y(x, y)
 
             return -(u * np.sin(aoa)) + (v * np.cos(aoa))
 
-        strength = scipy.optimize.fsolve(vortex_strength, -np.ones(1))
+        strength = scipy.optimize.fsolve(vortex_strength, -np.ones(1))[0]
 
-        vortex.strength = strength[0]
+        vortex.strength = strength
 
         self.add(vortex)
+
+    def add_wing_ground_effect(
+        self,
+        aoa: float,
+        x_0: float = 0,
+        y_0: float = 0,
+        chord: float = 1,
+        aoa_units: str = "deg",
+    ) -> None:
+        # if the aoa is given in degrees, convert to radians
+        if aoa_units == "deg":
+            aoa = -aoa * np.pi / 180
+        elif aoa_units == "rad":
+            aoa = -aoa
+        else:
+            Exception(
+                'Invalid angle units. Either "rad" for radians or "deg" for degrees.'
+            )
+        uniform = self._check_has_uniform_flow()
+
+        vortex_1 = Vortex(x_0, y_0, -1)
+        vortex_2 = Vortex(x_0, -y_0, 1)
+
+        x_1 = x_0 + chord * np.cos(aoa) / 2
+        y_1 = y_0 + chord * np.sin(aoa) / 2
+
+        x_2 = x_0 + chord * np.cos(-aoa) / 2
+        y_2 = -y_0 + chord * np.sin(-aoa) / 2
+
+        def vortex_strength(s):
+            vortex_1.strength = s
+            vortex_2.strength = -s
+
+            u_1 = (
+                vortex_1.velocity_x(x_1, y_1)
+                + vortex_2.velocity_x(x_1, y_1)
+                + uniform.velocity_x(x_1, y_1)
+            )
+            v_1 = (
+                vortex_1.velocity_y(x_1, y_1)
+                + vortex_2.velocity_y(x_1, y_1)
+                + uniform.velocity_y(x_1, y_1)
+            )
+
+            u_2 = (
+                vortex_1.velocity_x(x_2, y_2)
+                + vortex_2.velocity_x(x_2, y_2)
+                + uniform.velocity_x(x_2, y_2)
+            )
+            v_2 = (
+                vortex_1.velocity_y(x_2, y_2)
+                + vortex_2.velocity_y(x_2, y_2)
+                + uniform.velocity_y(x_2, y_2)
+            )
+
+            vel_1 = -(u_1 * np.sin(aoa)) + (v_1 * np.cos(aoa))
+            vel_2 = -(u_2 * np.sin(-aoa)) + (v_2 * np.cos(-aoa))
+
+            return vel_1 * vel_2
+
+        strength = scipy.optimize.fsolve(vortex_strength, -np.ones(1))[0]
+
+        vortex_1.strength = strength
+        vortex_2.strength = -strength
+
+        self.add(vortex_2)
+        self.add(vortex_1)
 
     def add_stream_line(
         self,
@@ -383,6 +453,9 @@ class FlowField:
         :param title: title of the plot.
         :return: None
         """
+        if not self._has_plot:
+            raise Exception("Flow Field instance has plot set to False.")
+
         if title is None:
             title = "Flow Field"
 
@@ -405,7 +478,7 @@ class FlowField:
         num: int,
         title: str = "Streamlines",
         x_start: Optional[float] = None,
-        dt: float = 0.1,
+        dt: float = 1e-3,
         max_iterations: float = 1e6,
     ) -> None:
         """
