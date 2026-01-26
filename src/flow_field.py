@@ -56,6 +56,8 @@ class FlowField:
         self.y_min = self.center[1] - self.size[1] / 2
         self.y_max = self.center[1] + self.size[1] / 2
 
+        plt.rcParams["text.usetex"] = True
+
     def add(self, flow: BaseFlow) -> None:
         """
         Adds a flow to the flow field.
@@ -126,6 +128,46 @@ class FlowField:
 
             self.add(vortex)
 
+    def add_wing(
+        self,
+        aoa: float,
+        x_0: float = 0,
+        y_0: float = 0,
+        chord: float = 1,
+        aoa_units: str = "deg",
+        xtol: float = 1e-8,
+    ) -> None:
+        # if the aoa is given in degrees, convert to radians
+        if aoa_units == "deg":
+            aoa = -aoa * np.pi / 180
+        elif aoa_units == "rad":
+            aoa = -aoa
+        else:
+            Exception(
+                'Invalid angle units. Either "rad" for radians or "deg" for degrees.'
+            )
+
+        uniform = self._check_has_uniform_flow()
+
+        vortex = Vortex(x_0, y_0, -1)
+
+        x = x_0 + chord * np.cos(aoa) / 2
+        y = y_0 + chord * np.sin(aoa) / 2
+
+        def vortex_strength(s):
+            vortex.strength = s
+
+            u = vortex.velocity_x(x, y) + uniform.velocity_x(x, y)
+            v = vortex.velocity_y(x, y) + uniform.velocity_y(x, y)
+
+            return -(u * np.sin(aoa)) + (v * np.cos(aoa))
+
+        strength = scipy.optimize.fsolve(vortex_strength, -np.ones(1))
+
+        vortex.strength = strength[0]
+
+        self.add(vortex)
+
     def add_stream_line(
         self,
         x_start: float,
@@ -138,58 +180,63 @@ class FlowField:
         )
         plt.plot(x_values, y_values)
 
-    def plot_stream_function(self) -> None:
+    def plot_stream_function(self, title: str = "Stream Function") -> None:
         """
         Plots the stream function of the flow field.
 
+        :param title: title of the figure.
         :return: None
         """
         X, Y, Z = self._get_scalar_field("stream_function")
 
         # plot as a contour
         self.ax.contourf(X, Y, Z)
-        self.plot("Stream Function")
+        self.plot(title)
 
-    def plot_potential_function(self) -> None:
+    def plot_potential_function(self, title: str = "Potential Function") -> None:
         """
         Plots the potential function of the flow field.
 
+        :param title: title of the plot.
         :return: None
         """
         X, Y, Z = self._get_scalar_field("potential_function")
 
         # plot as a contour
         self.ax.contourf(X, Y, Z)
-        self.plot("Potential Function")
+        self.plot(title)
 
-    def plot_velocity_x(self) -> None:
+    def plot_velocity_x(self, title: str = "Velocity X Component") -> None:
         """
         Plots the velocity component in the x direction of the flow field.
 
+        :param title: title of the plot.
         :return: None
         """
         X, Y, Z = self._get_scalar_field("velocity_x")
 
         # plot as a contour
         self.ax.contourf(X, Y, Z)
-        self.plot("Velocity X Component")
+        self.plot(title)
 
-    def plot_velocity_y(self) -> None:
+    def plot_velocity_y(self, title: str = "Velocity Y Component") -> None:
         """
         Plots the velocity component in the y direction of the flow field.
 
+        :param title: title of the plot.
         :return: None
         """
         X, Y, Z = self._get_scalar_field("velocity_y")
 
         # plot as a contour
         self.ax.contourf(X, Y, Z)
-        self.plot("Velocity Y Component")
+        self.plot(title)
 
-    def plot_velocity(self) -> None:
+    def plot_velocity(self, title: str = "Velocity Field") -> None:
         """
         Plots the velocity of the flow field as arrows.
 
+        :param title: title of the plot.
         :return: None
         """
         # get the coordinates of all the points where the velocity should be evaluated at.
@@ -246,12 +293,13 @@ class FlowField:
                     )
 
         # show the plot
-        self.plot("Velocity Field")
+        self.plot(title)
 
-    def plot_absolute_velocity(self) -> None:
+    def plot_absolute_velocity(self, title: str = "Absolute velocity") -> None:
         """
         Plots the absolute velocity in the flow field.
 
+        :param title: Title of the plot.
         :return: None
         """
         X, Y, vel_x = self._get_scalar_field("velocity_x")
@@ -261,30 +309,35 @@ class FlowField:
 
         # plot as a contour
         self.ax.contourf(X, Y, Z)
-        self.plot("Absolute velocity")
+        self.plot(title)
 
-    def plot_pressure_coefficient(self) -> None:
+    def plot_pressure_coefficient(self, title: str = "Pressure Coefficient") -> None:
         """
         Plots the pressure coefficient in the flow field.
 
+        :param title: Title of the plot.
         :return: None
         """
         uniform = self._check_has_uniform_flow()
 
-
         X, Y, vel_x = self._get_scalar_field("velocity_x")
         _, _, vel_y = self._get_scalar_field("velocity_y")
 
-        Z = 1 - np.square(np.sqrt(np.square(vel_x) + np.square(vel_y)) / uniform.freestream_velocity)
+        Z = 1 - np.square(
+            np.sqrt(np.square(vel_x) + np.square(vel_y)) / uniform.freestream_velocity
+        )
 
         # plot as a contour
         self.ax.contourf(X, Y, Z)
-        self.plot("Pressure Coefficient")
+        self.plot(title)
 
-    def plot_pressure_coefficient_cylinder(self, res: int = 100) -> None:
+    def plot_pressure_coefficient_cylinder(
+        self, title: str = "Pressure Coefficient over Cylinder", res: int = 100
+    ) -> None:
         """
         Plot the pressure coefficient across the surface of the cylinder.
 
+        :param title: Title of the plot.
         :param res: resolution of the plot.
         :return: None
         """
@@ -308,13 +361,19 @@ class FlowField:
                 du, dv = flow.velocity(x, y)
                 u += du
                 v += dv
-                d=1
+                d = 1
 
             velocity = np.sqrt(u**2 + v**2)
             surface[i] = 1 - (velocity / uniform.freestream_velocity) ** 2
 
         plt.plot(angles, surface, "r")
+        self.ax.set_title(title)
         self.ax.yaxis.set_inverted(True)
+        self.ax.set(
+            xlim=(0, 2 * np.pi),
+            xlabel="Cylinder angle [rad]",
+            ylabel="Pressure Coefficient [-]",
+        )
         plt.show()
 
     def plot(self, title: Optional[str] = None) -> None:
@@ -344,6 +403,7 @@ class FlowField:
     def plot_stream_lines(
         self,
         num: int,
+        title: str = "Streamlines",
         x_start: Optional[float] = None,
         dt: float = 0.1,
         max_iterations: float = 1e6,
@@ -352,6 +412,7 @@ class FlowField:
         Plot a vertical line of equally spaced streamlines starting at x_start.
 
         :param num: number of streamlines to plot.
+        :param title: title of the plot.
         :param x_start: x coordinate to start streamlines at.
         :param dt: size of the time step when computing the streamlines.
         :param max_iterations: maximum number of iterations of calculating the streamlines.
@@ -369,7 +430,22 @@ class FlowField:
             plt.plot(x_values, y_values)
 
         # show the plot
-        self.plot("Streamlines")
+        self.plot(title)
+
+    def get_lift_coefficient(self, length: Optional[float] = None) -> float:
+        """
+        Calculate the lift coefficient.
+
+        :param length: characteristic length for the calculation of the lift coefficient.
+        :return:
+        """
+        if length is None:
+            length = 2 * self._cylinder_radius
+
+        vortex = self._check_has_vortex()
+        uniform = self._check_has_uniform_flow()
+
+        return abs(2 * vortex.strength / uniform.freestream_velocity / length)
 
     def _get_scalar_field(self, function) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
@@ -447,6 +523,23 @@ class FlowField:
             raise Exception("Must define a Uniform Flow.")
 
         return uniform
+
+    def _check_has_vortex(self) -> Vortex:
+        """
+        Checks if the user has added a uniform flow to the flow field.
+
+        :return: The uniform flow field object, if present.
+        """
+        has_vortex = False
+        vortex = 0
+        for flow in self.flows:
+            if isinstance(flow, Vortex):
+                has_vortex = True
+                vortex = flow
+        if not has_vortex:
+            raise Exception("Must define a Uniform Flow.")
+
+        return vortex
 
     def _is_inside_cylinder(self, x, y) -> bool:
         """
