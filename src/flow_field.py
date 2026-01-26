@@ -264,17 +264,18 @@ class FlowField:
         self.plot("Absolute velocity")
 
     def plot_pressure_coefficient(self) -> None:
-        freestream = self._check_has_uniform_flow()
-
         """
         Plots the pressure coefficient in the flow field.
 
         :return: None
         """
+        uniform = self._check_has_uniform_flow()
+
+
         X, Y, vel_x = self._get_scalar_field("velocity_x")
         _, _, vel_y = self._get_scalar_field("velocity_y")
 
-        Z = 1 - np.square(np.sqrt(np.square(vel_x) + np.square(vel_y)) / freestream)
+        Z = 1 - np.square(np.sqrt(np.square(vel_x) + np.square(vel_y)) / uniform.freestream_velocity)
 
         # plot as a contour
         self.ax.contourf(X, Y, Z)
@@ -288,7 +289,7 @@ class FlowField:
         :return: None
         """
         if not self._has_cylinder:
-            Exception("The flow has no cylinder added.")
+            raise Exception("The flow has no cylinder added.")
 
         uniform = self._check_has_uniform_flow()
 
@@ -307,6 +308,7 @@ class FlowField:
                 du, dv = flow.velocity(x, y)
                 u += du
                 v += dv
+                d=1
 
             velocity = np.sqrt(u**2 + v**2)
             surface[i] = 1 - (velocity / uniform.freestream_velocity) ** 2

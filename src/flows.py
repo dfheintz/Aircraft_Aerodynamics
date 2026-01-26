@@ -376,7 +376,7 @@ class Doublet(BaseFlow):
         r, theta = self._to_polar_coordinates(x, y)
 
         u_r = self.strength * np.cos(theta) / r ** 2
-        u_theta = self.strength * np.sin(theta) / r ** 3
+        u_theta = self.strength * np.sin(theta) / r ** 2
 
         return self._to_cartesian_velocity(u_r, u_theta, theta)
 
