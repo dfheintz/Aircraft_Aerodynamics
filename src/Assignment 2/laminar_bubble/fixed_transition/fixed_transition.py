@@ -5,6 +5,7 @@ from matplotlib import pyplot as plt
 
 xfoil_path = "C:\\Users\\dfhei\\Desktop\\School\\Aircraft_Aerodynamics\\Aircraft_Aerodynamics_exercises\\src\\xfoil.exe"
 airfoil_name = 2218
+c_l = 0.8
 reynolds_number = 3e5
 transition_points = np.linspace(0, 1, 50)
 
@@ -28,7 +29,7 @@ def run_xfoil(path, airfoil, re, points):
         input_file.write(f"{point}\n\n\n")
         input_file.write("pacc\n")
         input_file.write(f"fixed_transition_{i}.dat\n\n")
-        input_file.write("cl 0.4\n")
+        input_file.write(f"cl {c_l}\n")
         input_file.write("pacc\n")
         input_file.write("pdel\n")
         input_file.write("0\n")
@@ -57,13 +58,14 @@ def process_data(points):
 c_d, c_d_p, c_d_f = process_data(transition_points)
 
 fig, ax = plt.subplots()
-ax.set_title("NACA 2218 Drag Coefficient for different Transition Points\n($C_L = 0.4, Re = 3e5, M=0$)")
-ax.set(ylabel=r"$C_D$", xlabel=r"xtr/c", ylim=(0, 0.017))
+ax.set_title("NACA 2218 Drag Coefficient for different Transition Points\n($C_L = 0.8, Re = 3e5, M=0$)")
+ax.set(ylabel=r"$C_D$", xlabel=r"x/c", ylim=(0, 0.019))
 ax.grid()
 ax.plot(transition_points, c_d, "r", label="$C_D$")
 ax.plot(transition_points, c_d_p, "b", label="$C_{D_p}$")
 ax.plot(transition_points, c_d_f, "g", label="$C_{D_f}$")
-ax.legend()
+ax.plot([0.3061, 0.3061], [0, 0.019], "k--", alpha=0.4, label="$xtr=0.31$")
+ax.legend(loc="lower right")
 
 plt.show()
 
